@@ -1,0 +1,27 @@
+{
+  "name": "weibo",
+  "version": "1.0.0",
+  "description": "spider weibo data",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/yuyunliuhen/spider.git"
+  },
+  "keywords": [
+    "spider",
+    "weibo"
+  ],
+  "author": "King Lee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yuyunliuhen/spider/issues"
+  },
+  "dependencies": {
+    "cheerio": "0.19.0",
+    "phantom": "^2.0.9"
+  },
+  "homepage": "https://github.com/yuyunliuhen/spider#readme"
+}
