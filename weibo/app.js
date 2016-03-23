@@ -1,7 +1,11 @@
 var phantom = require("phantom");
 var async = require('async');
-var config_json = require('./disease.json');
+
+var config_json = require('./disease');
 var cluster = require("cluster");
+var redis_pools = require('./redis_pools');
+var redis_config = require('./redis');
+redis_pools.configure(redis_config);
 
 var _ph, _page, _outObj;
 
@@ -32,12 +36,25 @@ function spider(url,cb){
 	});
 }
 
+function parse_html(content){
 
-//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(ph){});
-//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(ph){ph.exit()});
+}
+
+function hset(key,val,cb){
+	redis_pools.execute('pool_1',function(client, release){
+		client.hset('h_test',key,val,function (err, reply){
+			if(err){
+				console.error(err);
+			}
+			cb(reply);
+			release();
+		});
+	});
+}
+
 
 function start(){
-	var cpuCount = require('os').cpus().length * 5;
+	var cpuCount = require('os').cpus().length;
 	if (cluster.isMaster) {
 		for (var i = 0; i < cpuCount; i++) {
 			console.log('Forking process #' + (i + 1));
@@ -81,5 +98,10 @@ function start(){
 		);
 	}
 }
+
+
+//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(ph){});
+//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(ph){ph.exit()});
+//hset('abc','def',function(result){});
 
 start();
