@@ -12,6 +12,7 @@ redis_pools.configure(redis_config);
 
 var _ph, _page, _outObj;
 var proxy_config = '--proxy=' + proxy_config.proxy_ip;
+var h_weibo = 'h_weibo';
 
 function spider(url,cb){
 	phantom.create([proxy_config,'--load-images=false']).then(ph => {
@@ -28,7 +29,7 @@ function spider(url,cb){
 		return _page.property('content')
 	}).then(content => {
 		console.log('step 4');
-		parse_html(content);
+		parse_html(url,content);
 		_ph.exit();
 		_page.close();
 		cb();	
@@ -52,7 +53,7 @@ function spider_sync(url,cb){
 					return _page.property('content')
 				}).then(content => {
 					console.log('step 4');
-					parse_html(content);
+					parse_html(url,content);
 					if(1){
 						callback(null,_ph);
 					}else{
@@ -71,7 +72,7 @@ function spider_sync(url,cb){
 			});
 }
 
-function parse_html(data){
+function parse_html(url,data){
 	var $ = cheerio.load(data,{decodeEntities: false}); 
 	var obj = new Object();
 	$(".WB_cardwrap.S_bg2.clearfix").each(function(i,e){
@@ -97,13 +98,25 @@ function parse_html(data){
 		obj.cleancontent = cleancontent.replace(/^\s+/, '').replace(/\s+$/, '');
 
 		console.log("%j",obj);
-		hset(obj.msgUrl,JSON.stringify(obj),function(){});	
+		hset(url,JSON.stringify(obj),function(){});	
 	});
 }
 
 function hset(key,val,cb){
 	redis_pools.execute('pool_1',function(client, release){
-		client.hset('h_weibo',key,val,function (err, reply){
+		client.hset(h_weibo,key,val,function (err, reply){
+			if(err){
+				console.error(err);
+			}
+			cb(reply);
+			release();
+		});
+	});
+}
+
+function hget(key,cb){
+	redis_pools.execute('pool_1',function(client, release){
+		client.hget(h_weibo,key,function (err, reply){
 			if(err){
 				console.error(err);
 			}
@@ -125,9 +138,16 @@ function start(){
 				var keywords = config_json[count].name;
 				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
 				console.log(base_url);
-				spider(base_url,function(){
-					++count;	
-					callback(null);
+				hget(base_url,function(reply){
+					if(!reply){
+						spider(base_url,function(){
+							++count;	
+							callback(null);
+						});
+					}else{
+						++count;
+						callback(null);
+					}
 				});
 			},
 			function (err, n) {
@@ -184,6 +204,11 @@ function start_cluster(){
 		);
 	}
 }
+
+process.on('uncaughtException', function (err) {
+	console.error(err.stack);
+	console.log("Node NOT Exiting...");
+});
 
 //spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
 //spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
