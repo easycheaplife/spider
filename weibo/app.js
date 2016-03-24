@@ -103,10 +103,10 @@ function parse_html(url,data,cb){
 			res[obj.msgUrl] = JSON.stringify(obj);
 		}
 	});
-	if(JSON.stringify(res) == '{}'){
+	if(JSON.stringify(res) != '{}'){
 		hmset(res,cb);	
 	}else{
-		hmset(res,cb);	
+		cb(null);	
 	}
 }
 
@@ -158,7 +158,7 @@ function start(){
 				var keywords = config_json[count].name;
 				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
 				console.log(base_url);
-				spider_sync(base_url,function(){
+				spider(base_url,function(){
 					++count;	
 					callback(null);
 				});
@@ -199,7 +199,7 @@ function start_cluster(){
 				var keywords = config_json[count].name;
 				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
 				console.log(base_url);
-				spider(base_url,function(){
+				spider_sync(base_url,function(){
 					++count;	
 					callback(null);
 				});
@@ -215,7 +215,6 @@ function start_cluster(){
 
 process.on('uncaughtException', function (err) {
 	console.error(err.stack);
-	console.log("Node NOT Exiting...");
 });
 
 /*
@@ -239,5 +238,4 @@ obj[args1.key1] = 'test';
 hmset(args2,function(){});
 *
 */
-
 start();
