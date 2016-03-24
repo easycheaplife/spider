@@ -29,10 +29,11 @@ function spider(url,cb){
 		return _page.property('content')
 	}).then(content => {
 		console.log('step 4');
-		parse_html(url,content);
-		_ph.exit();
-		_page.close();
-		cb();	
+		parse_html(url,content,function(reply){
+			_ph.exit();
+			_page.close();
+			cb();	
+		});
 	});
 }
 
@@ -53,29 +54,30 @@ function spider_sync(url,cb){
 					return _page.property('content')
 				}).then(content => {
 					console.log('step 4');
-					parse_html(url,content);
-					if(1){
-						callback(null,_ph);
-					}else{
+					parse_html(url,content,function(reply){
 						_ph.exit();
-					}
-					_page.close();
+						_page.close();
+						callback(null);
+					});
 				});
 			},
-			function(ph,callback){
-				cb(ph);
+			function(callback){
+				callback(null);
 			}],
 			function(err,result){
 				if(err){
 					console.err(err);
 				}	
+				cb();
 			});
 }
 
-function parse_html(url,data){
+function parse_html(url,data,cb){
 	var $ = cheerio.load(data,{decodeEntities: false}); 
-	var obj = new Object();
+	var res = new Object();
 	$(".WB_cardwrap.S_bg2.clearfix").each(function(i,e){
+		var obj = new Object();
+		obj.base_url = url;
 		var weibocontent = $(e).find(".comment_txt").text();			
 		var jumpUrl = $(e).find(".feed_from.W_textb").children();
 		var userUrl = $(e).find(".face > a").attr("href");
@@ -96,15 +98,33 @@ function parse_html(url,data){
 		var cleancontent= weibocontent.replace(/\n\s*\n/g, '\n');
 		cleancontent = cleancontent.replace(/\n\s*\n\s*\n/g, '\n\n');
 		obj.cleancontent = cleancontent.replace(/^\s+/, '').replace(/\s+$/, '');
-
 		console.log("%j",obj);
-		hset(url,JSON.stringify(obj),function(){});	
+		if(obj.msgUrl){
+			res[obj.msgUrl] = JSON.stringify(obj);
+		}
 	});
+	if(JSON.stringify(res) == '{}'){
+		hmset(res,cb);	
+	}else{
+		hmset(res,cb);	
+	}
 }
 
 function hset(key,val,cb){
 	redis_pools.execute('pool_1',function(client, release){
 		client.hset(h_weibo,key,val,function (err, reply){
+			if(err){
+				console.error(err);
+			}
+			cb(reply);
+			release();
+		});
+	});
+}
+
+function hmset(args,cb){
+	redis_pools.execute('pool_1',function(client, release){
+		client.hmset(h_weibo,args,function (err, reply){
 			if(err){
 				console.error(err);
 			}
@@ -138,16 +158,9 @@ function start(){
 				var keywords = config_json[count].name;
 				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
 				console.log(base_url);
-				hget(base_url,function(reply){
-					if(!reply){
-						spider(base_url,function(){
-							++count;	
-							callback(null);
-						});
-					}else{
-						++count;
-						callback(null);
-					}
+				spider_sync(base_url,function(){
+					++count;	
+					callback(null);
 				});
 			},
 			function (err, n) {
@@ -183,15 +196,10 @@ function start_cluster(){
 		async.whilst(
 			function () { return count < total; },			
 			function (callback) {
-			
 				var keywords = config_json[count].name;
-				var base_url = 'http://s.weibo.com/weibo/' + keywords + '&Refer=STopic_box';
+				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
 				console.log(base_url);
-				spider(base_url,function(ph){
-					if(ph){
-						ph.exit();
-					}
-					console.log('continue');
+				spider(base_url,function(){
 					++count;	
 					callback(null);
 				});
@@ -210,8 +218,26 @@ process.on('uncaughtException', function (err) {
 	console.log("Node NOT Exiting...");
 });
 
-//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
-//spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
-//hset('abc','def',function(result){});
+/*
+ * test
+spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
+spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
+hset('abc','def',function(result){});
+
+var args1 = {'key1':'val1','key2':'val2'};
+var args2 = ['key1','val1','key2','val2'];
+
+var obj = new Object();
+console.log(obj);
+if(JSON.stringify(obj) == '{}'){
+	console.log('null');
+}else{
+	console.log('not null');
+}
+
+obj[args1.key1] = 'test';
+hmset(args2,function(){});
+*
+*/
 
 start();
