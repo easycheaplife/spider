@@ -15,20 +15,15 @@ var proxy_config = '--proxy=' + proxy_config.proxy_ip;
 var h_weibo = 'h_weibo';
 
 function spider(url,cb){
-	phantom.create([proxy_config,'--load-images=false']).then(ph => {
+	phantom.create([proxy_config,'--ignore-ssl-errors=yes','--load-images=false']).then(ph => {
 		_ph = ph;
-		console.log('step 1');
 		return _ph.createPage();
 	}).then(page => {
 		_page = page;
-		console.log('step 2');
 		return _page.open(url);
 	}).then(status => {
-		console.log(status);
-		console.log('step 3');
 		return _page.property('content')
 	}).then(content => {
-		console.log('step 4');
 		parse_html(url,content,function(reply){
 			_ph.exit();
 			_page.close();
@@ -214,13 +209,15 @@ function start_cluster(){
 }
 
 process.on('uncaughtException', function (err) {
-	console.error(err.stack);
+	if(0){
+		console.error(err.stack);
+	}
 });
 
 /*
  * test
 spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
-spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
+spider('http://s.weiru.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
 hset('abc','def',function(result){});
 
 var args1 = {'key1':'val1','key2':'val2'};
