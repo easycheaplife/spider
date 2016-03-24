@@ -37,18 +37,13 @@ function spider_sync(url,cb){
 			function(callback){
 				phantom.create([proxy_config,'--load-images=false']).then(ph => {
 					_ph = ph;
-					console.log('step 1');
 					return _ph.createPage();
 				}).then(page => {
 					_page = page;
-					console.log('step 2');
 					return _page.open(url);
 				}).then(status => {
-					console.log(status);
-					console.log('step 3');
 					return _page.property('content')
 				}).then(content => {
-					console.log('step 4');
 					parse_html(url,content,function(reply){
 						_ph.exit();
 						_page.close();
@@ -235,4 +230,4 @@ obj[args1.key1] = 'test';
 hmset(args2,function(){});
 *
 */
-start();
+start_cluster();
