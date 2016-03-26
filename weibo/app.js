@@ -3,7 +3,7 @@ var async = require('async');
 var iconv = require('iconv-lite');
 var cheerio = require("cheerio");
 
-var config_json = require('./disease');
+var config_json = require('./keywords');
 var cluster = require("cluster");
 var redis_pools = require('./redis_pools');
 var redis_config = require('./redis');
@@ -45,9 +45,13 @@ function spider_sync(url,cb){
 					return _page.property('content')
 				}).then(content => {
 					parse_html(url,content,function(reply){
-						_ph.exit();
-						_page.close();
-						callback(null);
+						var time_interval = Math.random(1000,5000);
+						setTimeout(function(){
+								_ph.exit();
+								_page.close();
+								callback(null);
+							
+							},time_interval);
 					});
 				});
 			},
@@ -94,15 +98,15 @@ function parse_html(url,data,cb){
 		}
 	});
 	if(JSON.stringify(res) != '{}'){
-		hmset(res,cb);	
+		hmset(h_weibo,res,cb);	
 	}else{
 		cb(null);	
 	}
 }
 
-function hset(key,val,cb){
+function hset(h_name,key,val,cb){
 	redis_pools.execute('pool_1',function(client, release){
-		client.hset(h_weibo,key,val,function (err, reply){
+		client.hset(h_name,key,val,function (err, reply){
 			if(err){
 				console.error(err);
 			}
@@ -112,9 +116,9 @@ function hset(key,val,cb){
 	});
 }
 
-function hmset(args,cb){
+function hmset(h_name,args,cb){
 	redis_pools.execute('pool_1',function(client, release){
-		client.hmset(h_weibo,args,function (err, reply){
+		client.hmset(h_name,args,function (err, reply){
 			if(err){
 				console.error(err);
 			}
@@ -124,9 +128,9 @@ function hmset(args,cb){
 	});
 }
 
-function hget(key,cb){
+function hget(h_name,key,cb){
 	redis_pools.execute('pool_1',function(client, release){
-		client.hget(h_weibo,key,function (err, reply){
+		client.hget(h_name,key,function (err, reply){
 			if(err){
 				console.error(err);
 			}
@@ -187,7 +191,8 @@ function start_cluster(){
 			function () { return count < total; },			
 			function (callback) {
 				var keywords = config_json[count].name;
-				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';
+				var random_page = Math.floor(Math.random(1,100) * 20);
+				var base_url = 'http://s.weibo.com/weibo/' + encodeURIComponent(keywords) + '&Refer=STopic_box';// + '&page=' + random_page;
 				console.log(base_url);
 				spider_sync(base_url,function(){
 					++count;	
@@ -213,7 +218,7 @@ process.on('uncaughtException', function (err) {
  * test
 spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
 spider('http://s.weiru.com/weibo/%25E6%258C%2582%25E5%258F%25B7&page=2',function(){});
-hset('abc','def',function(result){});
+hset(h_weibo,'abc','def',function(result){});
 
 var args1 = {'key1':'val1','key2':'val2'};
 var args2 = ['key1','val1','key2','val2'];
@@ -227,7 +232,8 @@ if(JSON.stringify(obj) == '{}'){
 }
 
 obj[args1.key1] = 'test';
-hmset(args2,function(){});
+hmset(h_weibo,args2,function(){});
 *
 */
+spider('http://s.weibo.com/weibo/%25E6%258C%2582%25E5%258F%25B7',function(){});
 start_cluster();
